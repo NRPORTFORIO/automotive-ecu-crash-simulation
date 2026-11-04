@@ -17,7 +17,7 @@ log_data = """Timestamp_ms,G_Force,Is_Fault,Airbag,FuelPump
 
 def analyze_crash_performance(csv_string):
     print("==================================================")
-    print("   ダイハツ安全性能開発用：衝突実験データ自動解析   ")
+    print("   安全性能開発用：衝突実験データ自動解析   ")
     print("==================================================\n")
     
     # pandasデータフレームへ読み込み
