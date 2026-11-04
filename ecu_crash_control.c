@@ -40,7 +40,7 @@ int main(void) {
         0.5f   // 100ms: 停止
     };
 
-    printf("--- ダイハツ衝突安全評価用：ECUログシミュレーション開始 ---\n");
+    printf("--- 衝突安全評価用：ECUログシミュレーション開始 ---\n");
     
     for(int i = 0; i < 10; i++) {
         int timestamp_ms = (i + 1) * 10;
