@@ -1,5 +1,5 @@
+import csv
 import io
-import pandas as pd
 
 # --- 1. 衝突実験データの疑似ログ（C言語の出力を模したもの） ---
 # 性能評価の現場を想定し、タイムスタンプ、加速度、故障有無、各フラグをCSV化
@@ -20,28 +20,40 @@ def analyze_crash_performance(csv_string):
     print("   安全性能開発用：衝突実験データ自動解析   ")
     print("==================================================\n")
     
-    # pandasデータフレームへ読み込み
-    df = pd.read_csv(io.StringIO(csv_string))
+    # Python標準のcsvモジュールで読み込み
+    f = io.StringIO(csv_string.strip())
+    reader = csv.DictReader(f)
     
-    # 評価基準の設定（例：本衝突開始から30ms以内にエアバッグが展開すること）
-    # 今回のデータでは 50msで衝突開始、70msで展開（差分20msで目標クリアの計算）
+    # 解析用のリストを生成
+    records = []
+    for row in reader:
+        records.append({
+            'Timestamp_ms': int(row['Timestamp_ms']),
+            'G_Force': float(row['G_Force']),
+            'Is_Fault': row['Is_Fault'],
+            'Airbag': row['Airbag'],
+            'FuelPump': row['FuelPump']
+        })
+    
+    # 評価基準の設定
     CRASH_START_TIME = 50 
     TARGET_DEPLOY_WINDOW_MS = 30
     
+    # [1. センサー健全性の評価]
     print("[1. センサー健全性の評価（バリデーション確認）]")
-    fault_records = df[df['Is_Fault'] == 'YES']
-    if not fault_records.empty:
-        for idx, row in fault_records.iterrows():
+    fault_records = [r for r in records if r['Is_Fault'] == 'YES']
+    if fault_records:
+        for row in fault_records:
             print(f" -> 警告: [{row['Timestamp_ms']}ms] 時点においてセンサーの異常値を検知。")
             print(f"    ステータス: 燃料ポンプが {row['FuelPump']} になり、フェイルセーフが正常稼働。")
-    print(" -> 判定: センサー異常検知および安全保護ロジックの動作確認【PASS】\n")
+    print(" -> 判定: センサー異常検知および安全保護ロジック of 動作確認【PASS】\n")
     
+    # [2. 安全装置（エアバッグ）の作動応答時間解析]
     print("[2. 安全装置（エアバッグ）の作動応答時間解析]")
-    # 最初に「DEPLOYED」になったタイムスタンプを取得
-    deployed_rows = df[df['Airbag'] == 'DEPLOYED']
+    deployed_times = [r['Timestamp_ms'] for r in records if r['Airbag'] == 'DEPLOYED']
     
-    if not deployed_rows.empty:
-        actual_deploy_time = deployed_rows['Timestamp_ms'].min()
+    if deployed_times:
+        actual_deploy_time = min(deployed_times)
         response_time = actual_deploy_time - CRASH_START_TIME
         
         print(f" -> 本衝突開始時刻 : {CRASH_START_TIME} ms")
@@ -57,8 +69,9 @@ def analyze_crash_performance(csv_string):
     else:
         print(" -> 判定: エアバッグが展開されませんでした。【FAIL】\n")
         
+    # [3. 衝突時（Max-G）の統計データ分析]
     print("[3. 衝突時（Max-G）の統計データ分析]")
-    max_g = df['G_Force'].max()
+    max_g = max([r['G_Force'] for r in records])
     print(f" -> 実験中の最大衝撃値 : {max_g:.1f} G")
     print("==================================================")
 
